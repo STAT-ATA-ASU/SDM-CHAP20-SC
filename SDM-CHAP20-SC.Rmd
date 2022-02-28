@@ -1,0 +1,153 @@
+---
+title: "Chapter 20"
+author: "Alan T. Arnholt"
+date: 'Last compiled: `r format(Sys.time(), "%B %d, %Y at %X")`'
+output: bookdown::html_document2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, warning = FALSE, message = FALSE, fig.align = "center")
+library(tidyverse)
+library(janitor)
+```
+
+# Comparing Groups
+
+## Difference in proportions
+
+**Objectives:**
+
+I.    Distribution of difference of two proportions
+
+II.   Work hypothesis test and CI for two proportions
+
+III.  Cautions
+
+________________
+
+We know that 
+
+* $\hat{p} \sim\mathcal{N}\left(p, \sqrt{\frac{p(1-p)}{n}}\right)$
+
+* $E(X - Y) = E(X) - E(Y)$, and $SD(X - Y)= \sqrt{SD^2(X) +SD^2(Y)}$
+
+Consequently, if two samples are independent,
+
+$$\hat{p}_1 - \hat{p}_2 \sim \mathcal{N}\left(p_1 - p_2, \sqrt{\frac{p_1(1-p_1)}{n_1}+\frac{p_2(1-p_2)}{n_2}} \right)$$
+To create a $(1 - \alpha)\cdot 100$% CI, we must estimate the standard deviation, producing a standard error.
+
+$$SE(\hat{p}_1 - \hat{p}_2) = \sqrt{\frac{\hat{p}_1(1-\hat{p}_1)}{n_1}+\frac{\hat{p}_2(1-\hat{p}_2)}{n_2}}$$
+
+A $(1 - \alpha)\cdot 100$% CI for $p_1 - p_2$ can be written as:
+
+$$CI_{(1 - \alpha)}(p_1 - p_2) = (\hat{p}_1 -\hat{p}_2) \pm z_{1 - \alpha/2}\cdot SE(\hat{p}_1 - \hat{p}_2)$$
+
+______________
+
+The hypothesis test for $p_1 - p_2$ is similar, but $H_0$ is always $p_1 - p_2 = 0$.  Since testing always assumes $H_0$ is true, this implies **$p_1 = p_2$**, so we need to estimate a **single** $\hat{p}_{\text{pooled}}$.
+
+* $\hat{p}_{\text{pooled}} = \frac{\text{Successes}_1 + \text{Successes}_2}{n_1 + n_2}$
+
+* The standard deviation used in the test is based on $\hat{p}_{\text{pooled}}$ so
+
+$$\sigma_{\hat{p}_1 - \hat{p}_2} = \sqrt{\frac{\hat{p}_{\text{pooled}}(1-\hat{p}_{\text{pooled}})}{n_1}+\frac{\hat{p}_{\text{pooled}}(1-\hat{p}_{\text{pooled}})}{n_2}}$$
+
+This means that our standardized test statistic will be
+
+$$z_{\text{stat}} = \frac{(\hat{p}_1-\hat{p}_2) - 0}{\sqrt{\frac{\hat{p}_{\text{pooled}}(1-\hat{p}_{\text{pooled}})}{n_1}+\frac{\hat{p}_{\text{pooled}}(1-\hat{p}_{\text{pooled}})}{n_2}}}$$
+
+_______________
+
+### Example{-}
+
+A health department wants to know if counseling plus the patch will help people quit smoking better than the patch alone. Subjects willing to use the patch were randomly divided into two groups: one received counseling, one did not. After 6 months, 46 of 143 smokers in the counseling group and 30 of 151 in the non-counseling group had stopped smoking. Do these results suggest counseling groups could help people stop smoking at improved rates? 
+
+Check assumptions, test and appropriate hypothesis and construct a 95% CI for the difference of population proportions.
+
+**Assumptions:** 46 successes and 97 failures in the first group, 30 successes and 121 failures in the second group; subjects **randomly** assigned to groups according to the problem; reasonable to assume groups are independent.
+
+$H_0: p_{\text{counseling + patch}} - p_{\text{patch}} = 0$ versus $H_A:p_{\text{counseling + patch}} - p_{\text{patch}} > 0$
+
+```{r}
+n1 <- 143
+n2 <- 151
+p1h <- 46/143
+p2h <- 30/151
+php <- (46 + 30)/(143 + 151)
+sigma_p1hp2h = sqrt(php*(1-php)/143 + php*(1-php)/151)
+zstat <- (p1h - p2h)/sigma_p1hp2h
+zstat
+pvalue <- pnorm(zstat, lower = FALSE)
+pvalue
+prop.test(x = c(46, 30), n = c(143, 151), alternative = "greater", correct = FALSE)
+# Constructing a two sided CI with alpha = 0.05 -> 95% CI
+prop.test(x = c(46, 30), n = c(143, 151), alternative = "two.sided", correct = FALSE)
+# Using the formula
+pt_estimate <- p1h - p2h
+SE <- sqrt(p1h*(1-p1h)/n1 + p2h*(1-p2h)/n2)
+CZ <- qnorm(.975)
+ME <- CZ*SE
+ll <- pt_estimate - ME
+ul <- pt_estimate + ME
+c(pt_estimate, SE, CZ, ME, ll, ul)
+```
+
+**What can we do to improve the precision of the CI?**
+
+____________________
+
+### CAUTIONS{-}
+
+* **Indepent Samples** must be present or this does not work (SD calculation are wrong).
+
+* **Randomization** must be present to ensure representative random samples.
+
+* **Interpretation** watch out for lurking variables and do not assume causation.
+
+_______________
+
+## Difference in Means
+
+**Objectives:**
+
+I.    Distribution of difference of two means
+
+II.   Work with hypothesis test and CI for two means
+
+III.    Cautions
+
+___________________
+
+Let's say we want to know how two groups' population means are related.  We will use $\bar{y}_1 - \bar{y}_2$ as out test statistic.  If the two groups are independent, then 
+
+$$\frac{(\bar{y}_1 - \bar{y}_2) - (\mu_1 - \mu_2)}{\sqrt{\frac{s_1^2}{n_1}+\frac{s^2_2}{n_2}}} \sim t_{\nu}$$
+
+where $$\nu = \frac{\left(\frac{s_1^2}{n_1}+\frac{s_2^2}{n_2} \right)^2}{\frac{1}{n_1-1}\left(\frac{s_1^2}{n_1} \right)^2 + \frac{1}{n_2-1}\left(\frac{s_2^2}{n_2} \right)^2}$$
+
+____________________
+
+### Example
+
+Resting pulse rates for a random sample of 26 smokers had a mean of 80 beats per minute (bpm) and a standard deviation of 5 bpm. Among 32 randomly chosen nonsmokers, the mean and standard deviation were 74 and 6 bpm. Both sets of data were roughly symmetric and had no outliers. Is there evidence of a difference in mean pulse rate between smokers and non-smokers? How big?
+
+Assumptions: Randomization? Nearly Normal? Independent Groups?
+
+$H_0: \mu_{\text{smokers}} - \mu_{\text{non-smokers}} = 0$ versus $H_A: \mu_{\text{smokers}} - \mu_{\text{non-smokers}} \neq 0$
+
+
+```{r}
+n1 <- 26
+ybar1 <- 80
+s1 <- 5
+n2 <- 32
+ybar2 <- 74
+s2 <- 6
+tstat <- (ybar1 - ybar2)/sqrt(s1^2/n1 + s2^2/n2)
+tstat
+nu <- (s1^2/n1 + s2^2/n2)^2/(1/(n1-1)*(s1^2/n1)^2 + 1/(n2-1)*(s2^2/n2)^2)
+nu
+pvalue <- pt(tstat, nu, lower = FALSE)*2
+pvalue
+library(PASWR2)
+tsum.test(mean.x = ybar1,s.x = s1, n.x = n1, mean.y = ybar2, s.y=s2, n.y=n2)
+```
